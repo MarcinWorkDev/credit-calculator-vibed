@@ -23,7 +23,17 @@ User-provided inputs:
 Nominal interest rate **cannot exceed** the maximum regulated by the Polish Civil Code:
 - **Max interest = NBP reference rate + 3.5 percentage points**
 
-> Implementation note: we will need a way to provide the current NBP reference rate (manual input or fetched). For MVP we can treat it as a configurable constant with a clear UI hint and a TODO to automate.
+#### NBP reference rate source (MVP proposal)
+Marcin preference: **fetch from a source if possible**.
+
+Options:
+1) **NBP API (recommended)**: fetch the current reference rate from NBP public API.
+   - Pros: always up to date, no manual edits.
+   - Cons: network dependency; need graceful fallback.
+2) **Config constant** (fallback): hard-coded default used when fetch fails.
+3) **Manual input** (advanced fallback): user-provided reference rate (with a “last updated” hint).
+
+**MVP decision (proposed):** use **NBP API** on app load, cache result (e.g., in `localStorage` with timestamp), and fall back to a bundled default if offline.
 
 ## 4. Commission handling
 - Commission amount is computed as:
@@ -58,7 +68,45 @@ Compute and display:
 - **APR (RRSO)**
 - **ESP (effective interest rate)**
 
-> Implementation note: formulas must be specified precisely (cash-flow model, compounding, day-count convention). We will draft a dedicated spec/ADR before implementation.
+#### 6.2.1 Proposed calculation spec (for approval before implementation)
+We will treat metrics as IRR-based measures on a cash-flow schedule.
+
+**Conventions**
+- Cash flows from the borrower perspective:
+  - at t0: borrower **receives** the net disbursement (positive)
+  - later: borrower **pays** installments (negative)
+- Time basis:
+  - day count: **Actual/365** (proposed)
+  - times are measured in days from disbursement date
+
+**Cash-flow model (proposed)**
+- Disbursement date: `startDate` (t0)
+- Amount received at t0:
+  - `CF0 = +principal - commissionAmount`
+    - since commission is a cost; even if spread across installments in the schedule, for APR we model it as cost reducing net disbursement (common approach). Alternative: treat commission as separate negative CF at t0.
+- For each installment i (i=1..N) on due date `Di`:
+  - `CFi = -paymentTotal_i`
+
+**APR (RRSO) (proposed)**
+Find annual rate `r` such that the NPV of cash flows equals zero:
+
+`0 = CF0 + Σ (CFi / (1 + r)^(ti))`
+
+Where `ti = days(Di - startDate) / 365`.
+
+Solve for `r` via numeric root finding (e.g., bisection + Newton fallback). Return as percentage.
+
+**ESP / Effective interest rate (proposed)**
+Define ESP as an effective annual interest rate derived from the same IRR:
+- `ESP = r` (same IRR) unless Marcin wants a different definition.
+
+> Open: confirm whether ESP is intended to be the same as APR, or a different measure (e.g., effective nominal interest ignoring fees).
+
+**Validation & testing (required)**
+- Unit tests with known scenarios (including zero commission).
+- Cross-check results with an external calculator / spreadsheet.
+
+This section must be approved by Marcin before implementation.
 
 ## 7. UX / UI
 - Nice, readable UI.
