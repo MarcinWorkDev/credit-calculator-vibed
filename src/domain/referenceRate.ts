@@ -16,9 +16,9 @@ export type ReferenceRate = {
 const CACHE_KEY = 'nbp:referenceRate:v1'
 
 export const DEFAULT_REFERENCE_RATE: ReferenceRate = {
-  ratePct: 5.75,
+  ratePct: 50,
   asOf: '2026-02-07',
-  source: 'bundled-default',
+  source: 'temporary-fixed-50',
   fetchedAt: 'bundled',
 }
 
