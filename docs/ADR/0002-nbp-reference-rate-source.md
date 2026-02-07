@@ -6,7 +6,7 @@ Proposed
 
 ## Context
 
-Interest rate validation requires max interest = NBP reference rate + 3.5pp.
+Interest rate validation requires max interest = 2 × (NBP reference rate + 3.5pp).
 
 We need the current NBP reference rate.
 

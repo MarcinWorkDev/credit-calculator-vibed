@@ -44,7 +44,7 @@ function App() {
 
   const maxNominalPct = useMemo(() => {
     if (refRatePct == null) return null
-    return refRatePct + 3.5
+    return 2 * (refRatePct + 3.5)
   }, [refRatePct])
 
   const derived = useMemo(() => {
