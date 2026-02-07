@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   computeAnnuitySchedule,
+  computeAprRrso,
+  computeEsp,
   getReferenceRate,
   type LoanInputField,
   validateLoanInput,
@@ -57,13 +59,21 @@ function App() {
     })
 
     if (!parsed.ok) {
-      return { schedule: null, fieldErrors: parsed.errors, globalError: null as string | null }
+      return {
+        schedule: null,
+        aprPct: null as number | null,
+        espPct: null as number | null,
+        fieldErrors: parsed.errors,
+        globalError: null as string | null,
+      }
     }
 
     // Legal cap validation (if ref rate is available)
     if (maxNominalPct != null && parsed.data.nominalInterestRatePct > maxNominalPct) {
       return {
         schedule: null,
+        aprPct: null as number | null,
+        espPct: null as number | null,
         fieldErrors: {
           nominalInterestRatePct: `Nominal rate exceeds legal cap (${maxNominalPct.toFixed(2)}%)`,
         },
@@ -79,10 +89,27 @@ function App() {
         commissionPct: parsed.data.commissionPct,
         numberOfInstallments: parsed.data.numberOfInstallments,
       })
-      return { schedule, fieldErrors: {}, globalError: null as string | null }
+
+      const aprPct = computeAprRrso({
+        startDate: parsed.data.startDate,
+        principal: parsed.data.principal,
+        commissionPct: parsed.data.commissionPct,
+        schedule,
+      }).ratePct
+
+      const espPct = computeEsp({
+        startDate: parsed.data.startDate,
+        principal: parsed.data.principal,
+        commissionPct: parsed.data.commissionPct,
+        schedule,
+      }).ratePct
+
+      return { schedule, aprPct, espPct, fieldErrors: {}, globalError: null as string | null }
     } catch (e) {
       return {
         schedule: null,
+        aprPct: null as number | null,
+        espPct: null as number | null,
         fieldErrors: {},
         globalError: e instanceof Error ? e.message : 'Unknown error',
       }
@@ -104,6 +131,13 @@ function App() {
               | legal cap: <strong>{maxNominalPct.toFixed(2)}%</strong>
             </>
           ) : null}
+        </div>
+
+        <div className="muted" style={{ marginTop: 6 }}>
+          APR (RRSO):{' '}
+          <strong>{derived.aprPct == null ? '—' : `${derived.aprPct.toFixed(2)}%`}</strong>
+          {'  '}| ESP:{' '}
+          <strong>{derived.espPct == null ? '—' : `${derived.espPct.toFixed(2)}%`}</strong>
         </div>
       </header>
 
