@@ -25,8 +25,50 @@ const DEFAULT_FORM: FormState = {
   numberOfInstallments: '120',
 }
 
+const FORM_STORAGE_KEY = 'cc:form:v1'
+
+function loadPersistedForm(): FormState | null {
+  try {
+    const raw = localStorage.getItem(FORM_STORAGE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as unknown
+    if (typeof parsed !== 'object' || parsed == null) return null
+    const o = parsed as Partial<FormState>
+    if (
+      typeof o.startDate !== 'string' ||
+      typeof o.principal !== 'string' ||
+      typeof o.nominalInterestRatePct !== 'string' ||
+      typeof o.commissionPct !== 'string' ||
+      typeof o.numberOfInstallments !== 'string'
+    ) {
+      return null
+    }
+    return {
+      startDate: o.startDate,
+      principal: o.principal,
+      nominalInterestRatePct: o.nominalInterestRatePct,
+      commissionPct: o.commissionPct,
+      numberOfInstallments: o.numberOfInstallments,
+    }
+  } catch {
+    return null
+  }
+}
+
+function savePersistedForm(form: FormState): void {
+  try {
+    localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(form))
+  } catch {
+    // ignore
+  }
+}
+
 function App() {
-  const [form, setForm] = useState<FormState>(DEFAULT_FORM)
+  const [form, setForm] = useState<FormState>(() => loadPersistedForm() ?? DEFAULT_FORM)
+
+  useEffect(() => {
+    savePersistedForm(form)
+  }, [form])
 
   const [refRatePct, setRefRatePct] = useState<number | null>(null)
   const [refRateMeta, setRefRateMeta] = useState<string>('')
