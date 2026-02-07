@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { type IsoDate } from './dateUtils'
 
 /**
  * User-provided inputs (raw values) for a loan calculation.
@@ -11,7 +12,8 @@ export const LoanInputSchema = z.object({
   startDate: z
     .string()
     .min(1, 'Start date is required')
-    .refine((v) => !Number.isNaN(Date.parse(v)), 'Start date must be a valid date'),
+    .refine((v) => !Number.isNaN(Date.parse(v)), 'Start date must be a valid date')
+    .transform((v) => v as IsoDate),
 
   principal: z.coerce
     .number()
