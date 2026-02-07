@@ -86,12 +86,12 @@ export function buildAprCashFlows(params: {
 }): CashFlow[] {
   const start = parseIsoDate(params.startDate)
 
-  const commissionAmount = (params.commissionPct / 100) * params.principal
-
   const flows: CashFlow[] = []
   flows.push({
     tDays: 0,
-    amount: params.principal - commissionAmount,
+    // Commission is already included in installment payments (spread across schedule rows).
+    // Disbursement at t0 is the full principal.
+    amount: params.principal,
   })
 
   for (const row of params.schedule) {
