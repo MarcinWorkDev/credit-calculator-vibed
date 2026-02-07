@@ -8,6 +8,7 @@ import {
   type IsHolidayUtc,
   type IsoDate,
 } from './dateUtils'
+import { isPolishHolidayUtc } from './plHolidays'
 
 export type GenerateDueDatesOptions = {
   /** Installments are due on this day-of-month (default: 10). */
@@ -36,7 +37,7 @@ export function generateDueDates(
 ): IsoDate[] {
   const dueDayOfMonth = options.dueDayOfMonth ?? 10
   const minDays = options.minDaysFromStartToFirstDue ?? 30
-  const isHolidayUtc = options.isHolidayUtc ?? (() => false)
+  const isHolidayUtc = options.isHolidayUtc ?? isPolishHolidayUtc
   const shouldShift = options.shiftToWorkingDay ?? true
 
   const start = parseIsoDate(startDate)
