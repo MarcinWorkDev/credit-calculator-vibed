@@ -1,6 +1,3 @@
-#!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
-
 # Install deps if node_modules is missing (common in fresh clones / CI-like env)
 if [ ! -d node_modules ]; then
   echo "[husky] node_modules missing → running npm ci"
