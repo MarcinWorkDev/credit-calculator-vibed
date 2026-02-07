@@ -1,9 +1,8 @@
 name: Deploy to GitHub Pages
 
 on:
-  push:
-    branches:
-      - main
+  # Disabled auto-deploy until GitHub Pages is enabled in repo settings.
+  # When enabled, we can re-add push trigger for main.
   workflow_dispatch:
 
 permissions:
