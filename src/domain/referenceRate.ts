@@ -30,23 +30,32 @@ export const DEFAULT_REFERENCE_RATE: ReferenceRate = {
 export const DEFAULT_REFERENCE_RATE_URL =
   'https://raw.githubusercontent.com/MarcinWorkDev/credit-calculator-vibed/main/public/nbp-reference-rate.json'
 
-export function loadCachedReferenceRate(): ReferenceRate | null {
+export function loadCachedReferenceRate(options?: { maxAgeMs?: number }): ReferenceRate | null {
   try {
     const raw = localStorage.getItem(CACHE_KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw) as unknown
+
     // minimal validation
     if (
-      typeof parsed === 'object' &&
-      parsed != null &&
-      typeof (parsed as ReferenceRate).ratePct === 'number' &&
-      typeof (parsed as ReferenceRate).asOf === 'string' &&
-      typeof (parsed as ReferenceRate).source === 'string' &&
-      typeof (parsed as ReferenceRate).fetchedAt === 'string'
+      typeof parsed !== 'object' ||
+      parsed == null ||
+      typeof (parsed as ReferenceRate).ratePct !== 'number' ||
+      typeof (parsed as ReferenceRate).asOf !== 'string' ||
+      typeof (parsed as ReferenceRate).source !== 'string' ||
+      typeof (parsed as ReferenceRate).fetchedAt !== 'string'
     ) {
-      return parsed as ReferenceRate
+      return null
     }
-    return null
+
+    const maxAgeMs = options?.maxAgeMs
+    if (maxAgeMs != null) {
+      const fetchedAtMs = Date.parse((parsed as ReferenceRate).fetchedAt)
+      if (!Number.isFinite(fetchedAtMs)) return null
+      if (Date.now() - fetchedAtMs > maxAgeMs) return null
+    }
+
+    return parsed as ReferenceRate
   } catch {
     return null
   }
@@ -80,12 +89,14 @@ export async function fetchReferenceRate(
 export async function getReferenceRate(options?: {
   url?: string
   preferCache?: boolean
+  cacheMaxAgeMs?: number
 }): Promise<ReferenceRate> {
   const preferCache = options?.preferCache ?? true
   const url = options?.url ?? DEFAULT_REFERENCE_RATE_URL
+  const cacheMaxAgeMs = options?.cacheMaxAgeMs ?? 6 * 60 * 60 * 1000 // 6h
 
   if (preferCache) {
-    const cached = loadCachedReferenceRate()
+    const cached = loadCachedReferenceRate({ maxAgeMs: cacheMaxAgeMs })
     if (cached) return cached
   }
 
