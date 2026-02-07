@@ -27,7 +27,7 @@ User-provided inputs:
 
 Nominal interest rate **cannot exceed** the maximum regulated by the Polish Civil Code:
 
-- **Max interest = NBP reference rate + 3.5 percentage points**
+- **Max interest = 2 × (NBP reference rate + 3.5 percentage points)**
 
 #### NBP reference rate source (MVP proposal)
 
