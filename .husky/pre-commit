@@ -1,0 +1,17 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Install deps if node_modules is missing (common in fresh clones / CI-like env)
+if [ ! -d node_modules ]; then
+  echo "[husky] node_modules missing → running npm ci"
+  npm ci
+fi
+
+# Format only staged files first (fast)
+npx lint-staged
+
+# Full gate (slow but explicit)
+npm run lint
+npm run typecheck
+npm run test --if-present
+npm run build
