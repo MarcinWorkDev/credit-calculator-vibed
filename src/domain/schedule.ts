@@ -1,4 +1,4 @@
-import { type IsoDate } from './dateUtils'
+import { daysBetweenUtc, parseIsoDate, type IsoDate } from './dateUtils'
 import { generateDueDates } from './dueDates'
 import { fromCents, sub, toCents, type MoneyCents } from './money'
 
@@ -20,17 +20,77 @@ export type AnnuityScheduleInput = {
   numberOfInstallments: number
 }
 
-function monthlyRate(nominalInterestRatePct: number): number {
-  return nominalInterestRatePct / 100 / 12
+function annualRate(nominalInterestRatePct: number): number {
+  return nominalInterestRatePct / 100
+}
+
+function interestForPeriodCents(params: {
+  balanceCents: MoneyCents
+  annualRate: number
+  days: number
+}): MoneyCents {
+  if (params.annualRate === 0) return 0
+  const interest = fromCents(params.balanceCents) * params.annualRate * (params.days / 365)
+  return toCents(interest)
+}
+
+function simulateEndBalanceCents(params: {
+  principalCents: MoneyCents
+  annualRate: number
+  daysBetweenPayments: number[]
+  paymentBaseCents: MoneyCents
+}): MoneyCents {
+  let balanceCents = params.principalCents
+
+  for (let i = 0; i < params.daysBetweenPayments.length; i += 1) {
+    const days = params.daysBetweenPayments[i]!
+    const interestCents = interestForPeriodCents({
+      balanceCents,
+      annualRate: params.annualRate,
+      days,
+    })
+    const principalPartCents = params.paymentBaseCents - interestCents
+    balanceCents = sub(balanceCents, principalPartCents)
+  }
+
+  return balanceCents
+}
+
+function solvePaymentBaseCents(params: {
+  principalCents: MoneyCents
+  annualRate: number
+  daysBetweenPayments: number[]
+}): MoneyCents {
+  // Find smallest paymentBaseCents such that ending balance <= 0.
+  let low = 0
+  let high = params.principalCents * 2 // safe upper bound for short terms
+
+  while (low < high) {
+    const mid = Math.floor((low + high) / 2)
+    const endBalance = simulateEndBalanceCents({
+      principalCents: params.principalCents,
+      annualRate: params.annualRate,
+      daysBetweenPayments: params.daysBetweenPayments,
+      paymentBaseCents: mid,
+    })
+
+    if (endBalance > 0) {
+      low = mid + 1
+    } else {
+      high = mid
+    }
+  }
+
+  return low
 }
 
 /**
- * Compute annuity schedule (monthly).
+ * Compute annuity schedule with equal monthly installments.
  *
- * Assumptions (MVP, may be refined later):
- * - Nominal interest is converted to a monthly rate by r = annual/12.
- * - Interest is computed on remaining balance each installment.
- * - Payment is constant (annuity), except last row may be adjusted due to rounding.
+ * Assumptions (MVP, aligned with sample):
+ * - Interest accrues daily using ACT/365: interest = balance * annualRate * days/365.
+ * - Installment amount (base, excluding commission) is constant and solved numerically to amortize to ~0.
+ * - Interest/principal parts are rounded to cents per installment.
  * - Commission is spread equally across installments.
  */
 export function computeAnnuitySchedule(input: AnnuityScheduleInput): ScheduleRow[] {
@@ -38,28 +98,33 @@ export function computeAnnuitySchedule(input: AnnuityScheduleInput): ScheduleRow
   if (n <= 0) return []
 
   const principalCents = toCents(input.principal)
-  const r = monthlyRate(input.nominalInterestRatePct)
+  const r = annualRate(input.nominalInterestRatePct)
 
   const commissionAmountCents = toCents((input.commissionPct / 100) * input.principal)
   const commissionPerInstallmentCents = Math.round(commissionAmountCents / n)
 
-  // Constant annuity payment (excluding commission), in cents.
-  let paymentBaseCents: MoneyCents
-  if (r === 0) {
-    paymentBaseCents = Math.round(principalCents / n)
-  } else {
-    const pow = Math.pow(1 + r, n)
-    const payment = (fromCents(principalCents) * r * pow) / (pow - 1)
-    paymentBaseCents = toCents(payment)
-  }
-
   const dueDates = generateDueDates(input.startDate, n)
+
+  const start = parseIsoDate(input.startDate)
+  const dueDatesParsed = dueDates.map((d) => parseIsoDate(d))
+  const daysBetweenPayments = dueDatesParsed.map((d, i) => {
+    const prev = i === 0 ? start : dueDatesParsed[i - 1]!
+    return daysBetweenUtc(prev, d)
+  })
+
+  // Constant annuity payment (excluding commission), solved to amortize using day-count interest.
+  const paymentBaseCents: MoneyCents = solvePaymentBaseCents({
+    principalCents,
+    annualRate: r,
+    daysBetweenPayments,
+  })
 
   const rows: ScheduleRow[] = []
   let balanceCents = principalCents
 
   for (let i = 1; i <= n; i += 1) {
-    const interestCents = r === 0 ? 0 : toCents(fromCents(balanceCents) * r)
+    const days = daysBetweenPayments[i - 1]!
+    const interestCents = interestForPeriodCents({ balanceCents, annualRate: r, days })
     let principalPartCents = sub(paymentBaseCents, interestCents)
 
     // Last installment: adjust to repay the remaining balance in full.
@@ -75,7 +140,6 @@ export function computeAnnuitySchedule(input: AnnuityScheduleInput): ScheduleRow
     balanceCents = sub(balanceCents, principalPartCents)
 
     const commissionCents = commissionPerInstallmentCents
-
     const paymentTotalCents = paymentBaseCents + commissionCents
 
     rows.push({
