@@ -41,6 +41,11 @@ h2 {
   align-items: start;
 }
 
+/* Allow grid children to shrink so the table doesn't force page-level horizontal scroll */
+.grid > * {
+  min-width: 0;
+}
+
 @media (max-width: 900px) {
   .grid {
     grid-template-columns: 1fr;
@@ -86,7 +91,10 @@ input {
 }
 
 .tableWrap {
-  overflow: auto;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
   border: 1px solid var(--border);
   border-radius: 8px;
 }
