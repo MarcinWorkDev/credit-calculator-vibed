@@ -26,6 +26,31 @@ const DEFAULT_FORM: FormState = {
 }
 
 const FORM_STORAGE_KEY = 'cc:form:v1'
+const THEME_STORAGE_KEY = 'cc:theme:v1'
+
+type Theme = 'dark' | 'light'
+
+function loadPersistedTheme(): Theme {
+  try {
+    const raw = localStorage.getItem(THEME_STORAGE_KEY)
+    return raw === 'light' ? 'light' : 'dark'
+  } catch {
+    return 'dark'
+  }
+}
+
+function savePersistedTheme(theme: Theme): void {
+  try {
+    localStorage.setItem(THEME_STORAGE_KEY, theme)
+  } catch {
+    // ignore
+  }
+}
+
+function applyTheme(theme: Theme): void {
+  document.documentElement.dataset.theme = theme
+  document.documentElement.style.colorScheme = theme
+}
 
 function loadPersistedForm(): FormState | null {
   try {
@@ -65,10 +90,16 @@ function savePersistedForm(form: FormState): void {
 
 function App() {
   const [form, setForm] = useState<FormState>(() => loadPersistedForm() ?? DEFAULT_FORM)
+  const [theme, setTheme] = useState<Theme>(() => loadPersistedTheme())
 
   useEffect(() => {
     savePersistedForm(form)
   }, [form])
+
+  useEffect(() => {
+    applyTheme(theme)
+    savePersistedTheme(theme)
+  }, [theme])
 
   const [refRatePct, setRefRatePct] = useState<number | null>(null)
   const [refRateMeta, setRefRateMeta] = useState<string>('')
@@ -163,7 +194,19 @@ function App() {
   return (
     <div className="container">
       <header className="header">
-        <h1>Credit Calculator (MVP)</h1>
+        <div className="headerTop">
+          <h1>Credit Calculator (MVP)</h1>
+          <button
+            type="button"
+            className="themeToggle"
+            onClick={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}
+            aria-label="Toggle theme"
+            title="Toggle theme"
+          >
+            Theme: {theme}
+          </button>
+        </div>
+
         <div className="muted">
           Reference rate: <strong>{refRatePct == null ? '…' : `${refRatePct.toFixed(2)}%`}</strong>{' '}
           <span className="meta">{refRateMeta}</span>
