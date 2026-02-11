@@ -52,6 +52,12 @@ body {
   color: var(--text);
 }
 
+/* Avoid accidental page-level horizontal scroll on small screens */
+html,
+body {
+  overflow-x: hidden;
+}
+
 a {
   font-weight: 600;
   color: var(--accent);
