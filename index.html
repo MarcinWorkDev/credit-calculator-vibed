@@ -4,7 +4,23 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>tmp-vite</title>
+    <title>Credit Calculator</title>
+
+    <!-- Set theme ASAP to avoid flash of wrong theme -->
+    <script>
+      ;(() => {
+        try {
+          const key = 'cc:theme:v1'
+          const stored = window.localStorage.getItem(key)
+          const theme = stored === 'light' ? 'light' : 'dark'
+          document.documentElement.dataset.theme = theme
+          document.documentElement.style.colorScheme = theme
+        } catch {
+          document.documentElement.dataset.theme = 'dark'
+          document.documentElement.style.colorScheme = 'dark'
+        }
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>
